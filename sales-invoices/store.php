@@ -1,7 +1,4 @@
 <?php
-// api/sales-invoices/store.php
-header('Content-Type: application/json');
-$pdo = new PDO("mysql:host=localhost;dbname=my_database;charset=utf8", 'root', 'password');
 
 $data = json_decode(file_get_contents('php://input'), true);
 
