@@ -20,6 +20,10 @@ if ($path === '/api/products' || $path === '/api/products/') {
     require 'products/categories.php';
 } else if ($path === '/api/sales-invoices' || $path === '/api/sales-invoices/') {
     require 'sales-invoices/invoice.php';
+} else if ($path === '/api/purchase-invoices' || $path === '/api/purchase-invoices/') {
+    require 'purchase-invoices/invoice.php';
+} else if ($path === '/api/reports' || $path === '/api/reports/') {
+    require 'reports/reports.php';
 } else {
     http_response_code(404);
     echo json_encode(['error' => 'Resource not found']);

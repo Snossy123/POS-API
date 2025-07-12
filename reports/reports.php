@@ -1,16 +1,12 @@
 <?php
-header("Content-Type: application/json");
-include 'db_connection.php';
 
 $type = $_GET['type'] ?? 'sales';
 $dateFrom = $_GET['from'] ?? date('Y-m-01');
 $dateTo = $_GET['to'] ?? date('Y-m-t');
 
-$conn = getDbConnection();
-
 if ($type === 'sales') {
     // تقرير المبيعات
-    $stmt = $conn->prepare("
+    $stmt = $pdo->prepare("
         SELECT date, COUNT(*) AS invoices, SUM(total) AS total
         FROM sales_invoices
         WHERE date BETWEEN ? AND ?
@@ -22,19 +18,24 @@ if ($type === 'sales') {
 }
 elseif ($type === 'purchases') {
     // تقرير المشتريات
-    $stmt = $conn->prepare("
-        SELECT date, COUNT(*) AS invoices, SUM(total) AS total
-        FROM purchase_invoices
-        WHERE date BETWEEN ? AND ?
-        GROUP BY date
-        ORDER BY date
+    $stmt = $pdo->prepare("
+        SELECT 
+            pi.date,
+            COUNT(DISTINCT pi.id) AS invoices,
+            SUM(pi.total) AS total,
+            COUNT(ii.id) AS items
+        FROM purchase_invoices pi
+        LEFT JOIN invoice_items ii ON pi.id = ii.invoice_id
+        WHERE pi.date BETWEEN ? AND ?
+        GROUP BY pi.date
+        ORDER BY pi.date;
     ");
     $stmt->execute([$dateFrom, $dateTo]);
     $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
 elseif ($type === 'profits') {
     // تقرير الأرباح
-    $stmt = $conn->prepare("
+    $stmt = $pdo->prepare("
         SELECT s.date,
                IFNULL(s.total, 0) AS sales,
                IFNULL(p.total, 0) AS purchases,
@@ -61,7 +62,7 @@ elseif ($type === 'profits') {
 }
 elseif ($type === 'top-selling') {
     // المنتجات الأكثر مبيعاً
-    $stmt = $conn->prepare("
+    $stmt = $pdo->prepare("
         SELECT product_name, SUM(quantity) AS quantity, SUM(price * quantity) AS revenue
         FROM sales_invoice_items
         JOIN sales_invoices ON sales_invoice_items.invoice_id = sales_invoices.id
@@ -75,7 +76,7 @@ elseif ($type === 'top-selling') {
 }
 elseif ($type === 'purchased-items') {
     // المنتجات المشتراة
-    $stmt = $conn->prepare("
+    $stmt = $pdo->prepare("
         SELECT product_name, SUM(quantity) AS quantity, SUM(purchase_price * quantity) AS cost
         FROM invoice_items
         JOIN purchase_invoices ON invoice_items.invoice_id = purchase_invoices.id
@@ -87,7 +88,7 @@ elseif ($type === 'purchased-items') {
 }
 elseif ($type === 'sold-items') {
     // المنتجات المباعة مع المتبقي
-    $stmt = $conn->prepare("
+    $stmt = $pdo->prepare("
         SELECT p.name AS product_name, 
                IFNULL(SUM(sii.quantity), 0) AS quantity_sold, 
                p.stock AS remaining
