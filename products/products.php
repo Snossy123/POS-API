@@ -14,8 +14,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $message = "تم تحديث المنتج بنجاح";
         } else {
             // إضافة منتج جديد
-            $stmt = $pdo->prepare("INSERT INTO products (id, name, price, stock, barcode, category) VALUES (?, ?, ?, ?, ?, ?)");
-            $stmt->execute([$product['id'], $product['name'], $product['price'], $product['stock'], $product['barcode'], $product['category']]);
+            if(getProduct($pdo, $product['name'])){
+                echo json_encode([
+                    "success" => false,
+                    "message" => "المنتج موجود مسبقاً",
+                    "products" => getProducts($pdo)
+                ]);
+                exit();
+            }
+            $stmt = $pdo->prepare("INSERT INTO products (name, price, stock, barcode, category) VALUES (?, ?, ?, ?, ?)");
+            $stmt->execute([$product['name'], $product['price'], $product['stock'], $product['barcode'], $product['category']]);
             $message = "تم إضافة المنتج بنجاح";
         }
         echo json_encode([
@@ -54,5 +62,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 function getProducts($pdo)
 {
     $stmt = $pdo->query("SELECT * FROM products");
+    return $stmt->fetchAll(PDO::FETCH_ASSOC);
+}
+function getProduct($pdo, $name)
+{
+    $stmt = $pdo->prepare("SELECT * FROM products WHERE name LIKE ?");
+    $stmt->execute(["%$name%"]);
     return $stmt->fetchAll(PDO::FETCH_ASSOC);
 }

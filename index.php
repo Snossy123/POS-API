@@ -14,18 +14,26 @@ require_once 'config/db.php';
 
 $path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
 
-if ($path === '/api/products' || $path === '/api/products/') {
-    require 'products/products.php';
-} else if ($path === '/api/categories' || $path === '/api/categories/') {
-    require 'products/categories.php';
-} else if ($path === '/api/sales-invoices' || $path === '/api/sales-invoices/') {
-    require 'sales-invoices/invoice.php';
-} else if ($path === '/api/purchase-invoices' || $path === '/api/purchase-invoices/') {
-    require 'purchase-invoices/invoice.php';
-} else if ($path === '/api/reports' || $path === '/api/reports/') {
-    require 'reports/reports.php';
-} else {
-    http_response_code(404);
-    echo json_encode(['error' => 'Resource not found']);
+try {
+    
+    if ($path === '/api/products' || $path === '/api/products/') {
+        require 'products/products.php';
+    } else if ($path === '/api/categories' || $path === '/api/categories/') {
+        require 'products/categories.php';
+    } else if ($path === '/api/sales-invoices' || $path === '/api/sales-invoices/') {
+        require 'sales-invoices/invoice.php';
+    } else if ($path === '/api/purchase-invoices' || $path === '/api/purchase-invoices/') {
+        require 'purchase-invoices/invoice.php';
+    } else if ($path === '/api/reports' || $path === '/api/reports/') {
+        require 'reports/reports.php';
+    } else {
+        http_response_code(404);
+        echo json_encode(['error' => 'Resource not found']);
+        exit();
+    }
+
+} catch (Exception $e) {
+    http_response_code(500);
+    echo json_encode(['error' => 'Internal Server Error', 'message' => $e->getMessage()]);
     exit();
 }
