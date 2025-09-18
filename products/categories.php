@@ -13,8 +13,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $message = "تم تحديث الفئة بنجاح";
         } else {
             // إضافة فئة جديدة
-            $stmt = $pdo->prepare("INSERT INTO categories (id, name, description, color) VALUES (?, ?, ?, ?)");
-            $stmt->execute([$category['id'], $category['name'], $category['description'], $category['color']]);
+            $stmt = $pdo->prepare("INSERT INTO categories (name, description, color) VALUES (?, ?, ?)");
+            $stmt->execute([$category['name'], $category['description'], $category['color']]);
             $message = "تم إضافة الفئة بنجاح";
         }
         echo json_encode([
