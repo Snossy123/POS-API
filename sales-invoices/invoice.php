@@ -6,14 +6,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
         $pdo->beginTransaction();
 
-        $stmt = $pdo->prepare("INSERT INTO sales_invoices (invoice_number, date, time, employee_id, total)
-                            VALUES (?, ?, ?, ?, ?)");
+        $stmt = $pdo->prepare("INSERT INTO sales_invoices (invoice_number, date, time, employee_id, total, kitchen_note)
+                            VALUES (?, ?, ?, ?, ?, ?)");
         $stmt->execute([
             $data['invoiceNumber'],
             $data['date'],
             $data['time'],
             $data['employee_id'],
-            (float) $data['total']
+            (float) $data['total'],
+            $data['kitchen_note'] ?? ''
         ]);
         $invoiceId = $pdo->lastInsertId();
 
