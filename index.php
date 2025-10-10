@@ -26,6 +26,8 @@ try {
         require 'purchase-invoices/invoice.php';
     } else if ($path === '/api/reports' || $path === '/api/reports/') {
         require 'reports/reports.php';
+    } else if ($path === '/api/employees' || $path === '/api/employees/') {
+        require 'employees/employees.php';
     } else {
         http_response_code(404);
         echo json_encode(['error' => 'Resource not found']);
