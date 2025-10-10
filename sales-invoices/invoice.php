@@ -6,13 +6,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
         $pdo->beginTransaction();
 
-        $stmt = $pdo->prepare("INSERT INTO sales_invoices (invoice_number, date, time, cashier, total)
+        $stmt = $pdo->prepare("INSERT INTO sales_invoices (invoice_number, date, time, employee_id, total)
                             VALUES (?, ?, ?, ?, ?)");
         $stmt->execute([
             $data['invoiceNumber'],
             $data['date'],
             $data['time'],
-            $data['cashier'],
+            $data['employee_id'],
             (float) $data['total']
         ]);
         $invoiceId = $pdo->lastInsertId();
@@ -53,9 +53,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 function getInvoices($pdo)
 {
-    // استرجاع الفواتير
+    // استرجاع الفواتير مع اسم الكاشير
     $stmt = $pdo->query("
-    SELECT * FROM sales_invoices ORDER BY id DESC
+        SELECT 
+            si.*, 
+            si.invoice_number AS invoiceNumber,
+            e.name AS cashier
+        FROM sales_invoices si
+        LEFT JOIN employees e ON si.employee_id = e.id
+        ORDER BY si.id DESC
     ");
     $invoices = $stmt->fetchAll(PDO::FETCH_ASSOC);
 

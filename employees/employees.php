@@ -68,13 +68,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 } elseif ($_SERVER['REQUEST_METHOD'] === 'GET') {
     echo json_encode([
-        'success' => true,
+        'status' => 'success',
         'message' => 'تم جلب بيانات الموظفين بنجاح',
         'employees' => getEmployees($pdo)
     ]);
 } else {
     http_response_code(405);
-    echo json_encode(['success' => false, 'message' => 'طريقة الطلب غير مسموحة']);
+    echo json_encode(['status' => 'error', 'message' => 'طريقة الطلب غير مسموحة']);
 }
 
 function getEmployees($pdo) {
