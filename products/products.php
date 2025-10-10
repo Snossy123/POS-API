@@ -9,8 +9,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $product = $input['product'];
         if ($action === 'update') {
             // تعديل منتج
-            $stmt = $pdo->prepare("UPDATE products SET name = ?, price = ?, stock = ?, barcode = ?, category = ? WHERE id = ?");
-            $stmt->execute([$product['name'], $product['price'], $product['stock'], $product['barcode'], $product['category'], $product['id']]);
+            $stmt = $pdo->prepare("UPDATE products SET name = ?, hasSizes = ?, price = ?, s_price = ?, m_price = ?, l_price = ?, stock = ?, barcode = ?, category_id = ? WHERE id = ?");
+            $stmt->execute([$product['name'], (int)$product['hasSizes'], $product['price'], $product['s_price'], $product['m_price'], $product['l_price'], $product['stock'], $product['barcode'], (int)$product['category'], $product['id']]);
             $message = "تم تحديث المنتج بنجاح";
         } else {
             // إضافة منتج جديد
@@ -22,8 +22,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ]);
                 exit();
             }
-            $stmt = $pdo->prepare("INSERT INTO products (name, price, stock, barcode, category) VALUES (?, ?, ?, ?, ?)");
-            $stmt->execute([$product['name'], $product['price'], $product['stock'], $product['barcode'], $product['category']]);
+            $stmt = $pdo->prepare("INSERT INTO products (name, hasSizes, price, s_price, m_price, l_price, stock, barcode, category_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            $stmt->execute([$product['name'], (int)$product['hasSizes'], $product['price'], $product['s_price'], $product['m_price'], $product['l_price'], $product['stock'], $product['barcode'], (int)$product['category']]);
             $message = "تم إضافة المنتج بنجاح";
         }
         echo json_encode([
@@ -61,7 +61,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 function getProducts($pdo)
 {
-    $stmt = $pdo->query("SELECT * FROM products");
+    $stmt = $pdo->query("
+                SELECT 
+                    p.*,
+                    c.name AS category
+                FROM products p
+                LEFT JOIN categories c ON p.category_id = c.id
+            ");
     return $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
 function getProduct($pdo, $name)

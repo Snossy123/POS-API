@@ -1,8 +1,8 @@
 <?php
-$host = 'localhost';
-$db   = 'pos_system';
+$host = 'db';
+$db   = 'pos_db';
 $user = 'root';
-$pass = '';
+$pass = 'rootpassword';
 $charset = 'utf8mb4';
 
 $dsn = "mysql:host=$host;dbname=$db;charset=$charset";
@@ -15,7 +15,7 @@ try {
     $pdo = new PDO($dsn, $user, $pass, $options);
 } catch (\PDOException $e) {
     http_response_code(500);
-    echo json_encode(['error' => 'Database Connection Failed']);
+    echo json_encode(['error' => 'Database Connection Failed', 'details' => $e->getMessage()]);
     exit;
 }
 ?>
