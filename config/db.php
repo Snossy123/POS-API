@@ -1,9 +1,10 @@
 <?php
-$host = 'db';
-$db   = 'pos_db';
-$user = 'root';
-$pass = 'rootpassword';
-$charset = 'utf8mb4';
+$host = $_ENV['DB_HOST'] ?? 'localhost';
+$db   = $_ENV['DB_NAME'] ?? 'pos_system';
+$user = $_ENV['DB_USER'] ?? 'root';
+$pass = $_ENV['DB_PASS'] ?? '';
+$charset = $_ENV['DB_CHARSET'] ?? 'utf8mb4';
+
 
 $dsn = "mysql:host=$host;dbname=$db;charset=$charset";
 $options = [

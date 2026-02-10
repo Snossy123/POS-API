@@ -10,6 +10,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit();
 }
 
+require_once 'config/env_loader.php';
+loadEnv(__DIR__ . '/.env');
+
 require_once 'config/db.php';
 
 $path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
