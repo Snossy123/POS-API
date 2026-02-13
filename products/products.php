@@ -8,9 +8,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($action === 'add' || $action === 'update') {
         $product = $input['product'];
         if ($action === 'update') {
+            // Processing image
+            $imagePath = $product['image_path'] ?? null;
+            if (isset($product['image']) && strpos($product['image'], 'data:image') === 0) {
+                $image_parts = explode(";base64,", $product['image']);
+                $image_type_aux = explode("image/", $image_parts[0]);
+                $image_type = $image_type_aux[1];
+                $image_base64 = base64_decode($image_parts[1]);
+                $fileName = uniqid() . '.' . $image_type;
+                $file = 'uploads/products/' . $fileName;
+                if (!is_dir('uploads/products/')) {
+                    mkdir('uploads/products/', 0777, true);
+                }
+                file_put_contents($file, $image_base64);
+                $imagePath = $file;
+            }
+
             // تعديل منتج
-            $stmt = $pdo->prepare("UPDATE products SET name = ?, hasSizes = ?, price = ?, s_price = ?, m_price = ?, l_price = ?, stock = ?, barcode = ?, category_id = ? WHERE id = ?");
-            $stmt->execute([$product['name'], (int)$product['hasSizes'], $product['price'], $product['s_price'], $product['m_price'], $product['l_price'], $product['stock'], $product['barcode'], (int)$product['category'], $product['id']]);
+            $stmt = $pdo->prepare("UPDATE products SET name = ?, hasSizes = ?, price = ?, s_price = ?, m_price = ?, l_price = ?, stock = ?, barcode = ?, category_id = ?, image = ? WHERE id = ?");
+            $stmt->execute([$product['name'], (int)$product['hasSizes'], $product['price'], $product['s_price'], $product['m_price'], $product['l_price'], $product['stock'], $product['barcode'], !empty($product['category_id']) ? (int)$product['category_id'] : null, $imagePath, $product['id']]);
             $message = "تم تحديث المنتج بنجاح";
         } else {
             // إضافة منتج جديد
@@ -22,8 +38,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ]);
                 exit();
             }
-            $stmt = $pdo->prepare("INSERT INTO products (name, hasSizes, price, s_price, m_price, l_price, stock, barcode, category_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
-            $stmt->execute([$product['name'], (int)$product['hasSizes'], $product['price'], $product['s_price'], $product['m_price'], $product['l_price'], $product['stock'], $product['barcode'], (int)$product['category']]);
+            // Processing image
+            $imagePath = null;
+            if (isset($product['image']) && strpos($product['image'], 'data:image') === 0) {
+                $image_parts = explode(";base64,", $product['image']);
+                $image_type_aux = explode("image/", $image_parts[0]);
+                $image_type = $image_type_aux[1];
+                $image_base64 = base64_decode($image_parts[1]);
+                $fileName = uniqid() . '.' . $image_type;
+                $file = 'uploads/products/' . $fileName;
+                if (!is_dir('uploads/products/')) {
+                    mkdir('uploads/products/', 0777, true);
+                }
+                file_put_contents($file, $image_base64);
+                $imagePath = $file;
+            }
+
+            $stmt = $pdo->prepare("INSERT INTO products (name, hasSizes, price, s_price, m_price, l_price, stock, barcode, category_id, image) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            $stmt->execute([$product['name'], (int)$product['hasSizes'], $product['price'], $product['s_price'], $product['m_price'], $product['l_price'], $product['stock'], $product['barcode'], !empty($product['category_id']) ? (int)$product['category_id'] : null, $imagePath]);
             $message = "تم إضافة المنتج بنجاح";
         }
         echo json_encode([
