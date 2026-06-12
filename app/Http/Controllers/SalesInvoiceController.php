@@ -62,8 +62,17 @@ class SalesInvoiceController extends Controller
 
             $paymentMethod = $data['payment_method'] ?? 'cash';
             $total = (float) $data['total'];
-            $amountPaid = isset($data['amount_paid']) ? (float) $data['amount_paid'] : $total;
-            $changeGiven = max(0, $amountPaid - $total);
+            $paymentStatus = in_array($data['payment_status'] ?? 'paid', ['paid', 'unpaid', 'partial'], true)
+                ? $data['payment_status']
+                : 'paid';
+            $orderType = in_array($data['order_type'] ?? 'takeaway', ['takeaway', 'table'], true)
+                ? $data['order_type']
+                : 'takeaway';
+
+            $amountPaid = $paymentStatus === 'unpaid'
+                ? 0
+                : (isset($data['amount_paid']) ? (float) $data['amount_paid'] : $total);
+            $changeGiven = $paymentStatus === 'unpaid' ? 0 : max(0, $amountPaid - $total);
 
             $invoice = SalesInvoice::create([
                 'invoice_number' => $data['invoiceNumber'],
@@ -76,8 +85,9 @@ class SalesInvoiceController extends Controller
                 'amount_paid' => $amountPaid,
                 'change_given' => $changeGiven,
                 'kitchen_note' => $data['kitchen_note'] ?? '',
+                'order_type' => $orderType,
                 'status' => 'completed',
-                'payment_status' => $data['payment_status'] ?? ($paymentMethod === 'card' ? 'paid' : 'paid'),
+                'payment_status' => $paymentStatus,
                 'client_id' => $clientId,
             ]);
 
