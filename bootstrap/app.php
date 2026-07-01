@@ -2,6 +2,7 @@
 
 use App\Http\Middleware\EnsureOpenShift;
 use App\Http\Middleware\EnsureRole;
+use App\Http\Middleware\VerifyLicense;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -17,6 +18,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'role' => EnsureRole::class,
             'shift.open' => EnsureOpenShift::class,
+            'license' => VerifyLicense::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
