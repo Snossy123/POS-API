@@ -37,4 +37,16 @@ class SalesInvoicePolicy
     {
         return true;
     }
+
+    public function pay(Authenticatable $user, SalesInvoice $invoice): bool
+    {
+        return in_array($invoice->payment_status, ['unpaid', 'partial'], true)
+            && in_array($invoice->status, ['completed', 'partial_refund'], true);
+    }
+
+    public function updateItems(Authenticatable $user, SalesInvoice $invoice): bool
+    {
+        return $invoice->payment_status === 'unpaid'
+            && $invoice->status === 'completed';
+    }
 }

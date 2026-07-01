@@ -28,6 +28,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/employees', [EmployeeController::class, 'handle']);
     Route::get('/employees', [EmployeeController::class, 'index']);
 
+    Route::get('/purchase-invoices/next-number', [PurchaseInvoiceController::class, 'nextNumber']);
     Route::post('/purchase-invoices', [PurchaseInvoiceController::class, 'store']);
     Route::get('/purchase-invoices', [PurchaseInvoiceController::class, 'index']);
 
@@ -36,6 +37,8 @@ Route::middleware('auth:sanctum')->group(function () {
         ->middleware('shift.open');
     Route::patch('/sales-invoices/{salesInvoice}/void', [SalesInvoiceController::class, 'void']);
     Route::post('/sales-invoices/{salesInvoice}/refund', [SalesInvoiceController::class, 'refund']);
+    Route::post('/sales-invoices/{salesInvoice}/pay', [SalesInvoiceController::class, 'pay']);
+    Route::patch('/sales-invoices/{salesInvoice}/items', [SalesInvoiceController::class, 'updateItems']);
     Route::patch('/sales-invoices/{salesInvoice}/payment-status', [SalesInvoiceController::class, 'updatePaymentStatus']);
     Route::post('/sales-invoices/{salesInvoice}/reprint', [SalesInvoiceController::class, 'reprint']);
 

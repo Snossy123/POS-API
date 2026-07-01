@@ -91,7 +91,9 @@ class SalesInvoiceController extends Controller
                 'client_id' => $clientId,
             ]);
 
-            foreach ($data['items'] as $item) {
+            $mergedItems = $this->mergeRequestItems($data['items']);
+
+            foreach ($mergedItems as $item) {
                 SalesInvoiceItem::create([
                     'invoice_id' => $invoice->id,
                     'product_id' => $item['product_id'] ?? $item['id'] ?? null,
@@ -102,7 +104,7 @@ class SalesInvoiceController extends Controller
                 ]);
             }
 
-            $this->inventoryService->deductForSale($data['items']);
+            $this->inventoryService->deductForSale($mergedItems);
 
             DB::commit();
 
@@ -212,6 +214,116 @@ class SalesInvoiceController extends Controller
         ]);
     }
 
+    public function pay(Request $request, SalesInvoice $salesInvoice)
+    {
+        $this->authorize('pay', $salesInvoice);
+
+        $data = $request->validate([
+            'payment_method' => ['required', 'in:cash,card'],
+            'amount_paid' => ['nullable', 'numeric', 'min:0'],
+        ]);
+
+        $paymentMethod = $data['payment_method'];
+        $total = (float) $salesInvoice->total;
+        $amountPaid = $paymentMethod === 'card'
+            ? $total
+            : (float) ($data['amount_paid'] ?? $total);
+
+        if ($paymentMethod === 'cash' && $amountPaid < $total) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'المبلغ المدفوع أقل من الإجمالي',
+            ], 422);
+        }
+
+        $changeGiven = max(0, $amountPaid - $total);
+
+        DB::transaction(function () use ($salesInvoice, $request, $paymentMethod, $amountPaid, $changeGiven) {
+            $salesInvoice->update([
+                'payment_status' => 'paid',
+                'payment_method' => $paymentMethod,
+                'amount_paid' => $amountPaid,
+                'change_given' => $changeGiven,
+            ]);
+
+            SalesInvoiceAction::create([
+                'invoice_id' => $salesInvoice->id,
+                'action' => 'pay',
+                'performed_by' => $request->user()->id,
+                'performer_type' => AuthUser::type($request->user()),
+                'meta' => [
+                    'payment_method' => $paymentMethod,
+                    'amount_paid' => $amountPaid,
+                    'change_given' => $changeGiven,
+                ],
+            ]);
+        });
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'تم دفع الفاتورة',
+            'invoice' => $this->transformInvoice($salesInvoice->fresh()->load(['employee', 'items'])),
+        ]);
+    }
+
+    public function updateItems(Request $request, SalesInvoice $salesInvoice)
+    {
+        $this->authorize('updateItems', $salesInvoice);
+
+        $data = $request->validate([
+            'items' => ['required', 'array', 'min:1'],
+            'items.*.product_id' => ['nullable'],
+            'items.*.id' => ['nullable'],
+            'items.*.name' => ['required', 'string'],
+            'items.*.price' => ['required', 'numeric', 'min:0'],
+            'items.*.quantity' => ['required', 'numeric', 'min:0.01'],
+            'items.*.barcode' => ['nullable', 'string'],
+            'kitchen_note' => ['nullable', 'string', 'max:500'],
+            'total' => ['required', 'numeric', 'min:0'],
+        ]);
+
+        DB::transaction(function () use ($salesInvoice, $request, $data) {
+            $mergedItems = $this->mergeRequestItems($data['items']);
+            $total = $this->calculateItemsTotal($mergedItems);
+
+            $oldItems = $salesInvoice->items()->get();
+            $this->inventoryService->adjustForItemChanges($oldItems, $mergedItems);
+
+            $salesInvoice->items()->delete();
+
+            foreach ($mergedItems as $item) {
+                SalesInvoiceItem::create([
+                    'invoice_id' => $salesInvoice->id,
+                    'product_id' => $item['product_id'] ?? $item['id'] ?? null,
+                    'product_name' => $item['name'],
+                    'price' => $item['price'],
+                    'quantity' => $item['quantity'],
+                    'barcode' => $item['barcode'] ?? '',
+                ]);
+            }
+
+            $updateData = ['total' => $total];
+            if (array_key_exists('kitchen_note', $data)) {
+                $updateData['kitchen_note'] = $data['kitchen_note'];
+            }
+            $salesInvoice->update($updateData);
+
+            SalesInvoiceAction::create([
+                'invoice_id' => $salesInvoice->id,
+                'action' => 'items_update',
+                'performed_by' => $request->user()->id,
+                'performer_type' => AuthUser::type($request->user()),
+                'meta' => ['total' => $total, 'item_count' => count($mergedItems)],
+            ]);
+        });
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'تم تحديث الفاتورة',
+            'invoice' => $this->transformInvoice($salesInvoice->fresh()->load(['employee', 'items'])),
+        ]);
+    }
+
     public function updatePaymentStatus(Request $request, SalesInvoice $salesInvoice)
     {
         $this->authorize('updatePaymentStatus', $salesInvoice);
@@ -261,15 +373,74 @@ class SalesInvoiceController extends Controller
         $data = $invoice->toArray();
         $data['invoiceNumber'] = $invoice->invoice_number;
         $data['cashier'] = $invoice->employee?->name;
-        $data['items'] = $invoice->items->map(fn ($item) => [
-            'id' => $item->product_id ?? $item->id,
-            'product_id' => $item->product_id,
-            'name' => $item->product_name,
-            'price' => $item->price,
-            'quantity' => $item->quantity,
-            'barcode' => $item->barcode,
-        ]);
+        $data['status'] = $invoice->status ?? 'completed';
+        $data['payment_status'] = $invoice->payment_status ?? 'paid';
+        $data['total'] = (float) $invoice->total;
+        $data['amount_paid'] = (float) ($invoice->amount_paid ?? 0);
+        $data['change_given'] = (float) ($invoice->change_given ?? 0);
+        $data['items'] = $this->mergeStoredItems($invoice->items);
 
         return $data;
+    }
+
+    private function mergeRequestItems(array $items): array
+    {
+        $merged = [];
+
+        foreach ($items as $item) {
+            $productId = $item['product_id'] ?? $item['id'] ?? null;
+            $price = round((float) $item['price'], 2);
+            $key = ($productId ?? ($item['name'] ?? '')) . '|' . number_format($price, 2, '.', '');
+
+            if (isset($merged[$key])) {
+                $merged[$key]['quantity'] += (float) $item['quantity'];
+                continue;
+            }
+
+            $merged[$key] = $item;
+            $merged[$key]['price'] = $price;
+            $merged[$key]['quantity'] = (float) $item['quantity'];
+            if ($productId) {
+                $merged[$key]['product_id'] = $productId;
+            }
+        }
+
+        return array_values($merged);
+    }
+
+    private function mergeStoredItems(iterable $items): array
+    {
+        $merged = [];
+
+        foreach ($items as $item) {
+            $productId = $item->product_id;
+            $price = round((float) $item->price, 2);
+            $key = ($productId ?? $item->product_name) . '|' . number_format($price, 2, '.', '');
+
+            if (isset($merged[$key])) {
+                $merged[$key]['quantity'] += (float) $item->quantity;
+                continue;
+            }
+
+            $merged[$key] = [
+                'id' => $productId ?? $item->id,
+                'product_id' => $productId,
+                'name' => $item->product_name,
+                'price' => $price,
+                'quantity' => (float) $item->quantity,
+                'barcode' => $item->barcode,
+            ];
+        }
+
+        return array_values($merged);
+    }
+
+    private function calculateItemsTotal(array $items): float
+    {
+        return array_reduce(
+            $items,
+            fn (float $sum, array $item) => $sum + ((float) $item['price'] * (float) $item['quantity']),
+            0.0
+        );
     }
 }

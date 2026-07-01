@@ -30,14 +30,15 @@ class ReportController extends Controller
                 $data = DB::select("
                     SELECT 
                         pi.date,
+                        pi.invoice_type,
                         COUNT(DISTINCT pi.id) AS invoices,
                         SUM(pi.total) AS total,
                         COUNT(ii.id) AS items
                     FROM purchase_invoices pi
                     LEFT JOIN invoice_items ii ON pi.id = ii.invoice_id
                     WHERE pi.date BETWEEN ? AND ?
-                    GROUP BY pi.date
-                    ORDER BY pi.date
+                    GROUP BY pi.date, pi.invoice_type
+                    ORDER BY pi.date, pi.invoice_type
                 ", [$dateFrom, $dateTo]);
                 break;
 
@@ -84,6 +85,7 @@ class ReportController extends Controller
                     FROM invoice_items
                     JOIN purchase_invoices ON invoice_items.invoice_id = purchase_invoices.id
                     WHERE purchase_invoices.date BETWEEN ? AND ?
+                      AND purchase_invoices.invoice_type = 'general'
                     GROUP BY product_name
                 ", [$dateFrom, $dateTo]);
                 break;

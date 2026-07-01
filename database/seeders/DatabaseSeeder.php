@@ -17,11 +17,20 @@ class DatabaseSeeder extends Seeder
     {
         // User::factory(10)->create();
 
-        User::factory()->create([
-            'name' => 'Admin',
-            'email' => 'admin@pos.local',
-            'role' => 'admin',
-            'password' => 'password',
+        User::query()->updateOrCreate(
+            ['email' => 'admin@pos.local'],
+            [
+                'name' => 'Admin',
+                'role' => 'admin',
+                'password' => 'password',
+            ],
+        );
+
+        $this->call([
+            CategorySeeder::class,
+            ProductSeeder::class,
+            MenuProductSeeder::class,
+            EmployeeSeeder::class,
         ]);
     }
 }

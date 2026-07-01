@@ -11,20 +11,24 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('invoice_items', function (Blueprint $table) {
-            if (!Schema::hasColumn('invoice_items', 'product_id')) {
-                $table->integer('product_id')->nullable()->after('invoice_id');
-            }
-            if (!Schema::hasColumn('invoice_items', 'category_id')) {
-                $table->integer('category_id')->nullable()->after('product_id');
-            }
-        });
+        if (Schema::hasTable('invoice_items')) {
+            Schema::table('invoice_items', function (Blueprint $table) {
+                if (!Schema::hasColumn('invoice_items', 'product_id')) {
+                    $table->integer('product_id')->nullable()->after('invoice_id');
+                }
+                if (!Schema::hasColumn('invoice_items', 'category_id')) {
+                    $table->integer('category_id')->nullable()->after('product_id');
+                }
+            });
+        }
 
-        Schema::table('sales_invoice_items', function (Blueprint $table) {
-            if (!Schema::hasColumn('sales_invoice_items', 'product_id')) {
-                $table->integer('product_id')->nullable()->after('invoice_id');
-            }
-        });
+        if (Schema::hasTable('sales_invoice_items')) {
+            Schema::table('sales_invoice_items', function (Blueprint $table) {
+                if (!Schema::hasColumn('sales_invoice_items', 'product_id')) {
+                    $table->integer('product_id')->nullable()->after('invoice_id');
+                }
+            });
+        }
 
         if (!Schema::hasTable('employees')) {
             Schema::create('employees', function (Blueprint $table) {
