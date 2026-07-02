@@ -193,7 +193,9 @@ class SalesInvoiceController extends Controller
                 'status' => $status,
             ]);
 
-            if (!empty($data['items'])) {
+            if ($status === 'refunded') {
+                $this->inventoryService->restoreForInvoiceItems($salesInvoice->items);
+            } elseif (!empty($data['items'])) {
                 $this->inventoryService->restorePartial($salesInvoice->items, $data['items']);
             }
 

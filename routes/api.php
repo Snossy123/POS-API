@@ -22,6 +22,7 @@ Route::middleware('license')->group(function () {
 
         Route::post('/products', [ProductController::class, 'handle']);
         Route::get('/products', [ProductController::class, 'index']);
+        Route::patch('/products/{product}/stock', [ProductController::class, 'adjustStock']);
 
         Route::post('/categories', [CategoryController::class, 'handle']);
         Route::get('/categories', [CategoryController::class, 'index']);

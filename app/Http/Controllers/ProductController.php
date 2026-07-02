@@ -4,10 +4,14 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Product;
+use App\Services\InventoryService;
 use Illuminate\Support\Facades\File;
 
 class ProductController extends Controller
 {
+    public function __construct(private InventoryService $inventoryService)
+    {
+    }
     public function index()
     {
         $products = Product::with('category_info')->get()->map(function ($product) {
@@ -134,6 +138,34 @@ class ProductController extends Controller
             'success' => true,
             'message' => "تم حذف المنتج بنجاح",
             'products' => $this->getProductsList()
+        ]);
+    }
+
+    public function adjustStock(Request $request, Product $product)
+    {
+        $data = $request->validate([
+            'delta' => ['nullable', 'numeric'],
+            'stock' => ['nullable', 'numeric'],
+        ]);
+
+        if (isset($data['delta'])) {
+            $this->inventoryService->adjustStock($product->id, (float) $data['delta']);
+        } elseif (isset($data['stock'])) {
+            $product->update(['stock' => (float) $data['stock']]);
+        } else {
+            return response()->json([
+                'success' => false,
+                'message' => 'يجب إرسال delta أو stock',
+            ], 422);
+        }
+
+        $product->refresh();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'تم تحديث المخزون',
+            'product' => $product->load('category_info'),
+            'products' => $this->getProductsList(),
         ]);
     }
 

@@ -6,11 +6,15 @@ use App\Models\Category;
 use App\Models\InvoiceItem;
 use App\Models\Product;
 use App\Models\PurchaseInvoice;
+use App\Services\InventoryService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class PurchaseInvoiceController extends Controller
 {
+    public function __construct(private InventoryService $inventoryService)
+    {
+    }
     public function nextNumber()
     {
         return response()->json([
@@ -75,6 +79,8 @@ class PurchaseInvoiceController extends Controller
                 'total' => $data['total'],
             ]);
 
+            $purchaseStockItems = [];
+
             foreach ($data['items'] as $item) {
                 if ($invoiceType === 'operation') {
                     InvoiceItem::create([
@@ -112,6 +118,17 @@ class PurchaseInvoiceController extends Controller
                     'sale_price' => $item['sale_price'] ?? 0,
                     'category_id' => $categoryId,
                 ]);
+
+                if ($productId && (float) ($item['quantity'] ?? 0) > 0) {
+                    $purchaseStockItems[] = [
+                        'product_id' => $productId,
+                        'quantity' => (float) $item['quantity'],
+                    ];
+                }
+            }
+
+            if ($invoiceType === 'general' && !empty($purchaseStockItems)) {
+                $this->inventoryService->addForPurchase($purchaseStockItems);
             }
 
             DB::commit();

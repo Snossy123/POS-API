@@ -6,7 +6,7 @@ use Illuminate\Console\Command;
 
 class LicenseGenerateKeypair extends Command
 {
-    protected $signature = 'license:generate-keypair';
+    protected $signature = 'license:generate-keypair {--output= : Optional path to write public.pem for client delivery}';
 
     protected $description = 'Generate an RSA key pair for license signing (developer only)';
 
@@ -40,6 +40,17 @@ class LicenseGenerateKeypair extends Command
         $this->newLine();
         $this->comment('Add this to config/license.php via LICENSE_PUBLIC_KEY (safe to ship):');
         $this->line($this->formatEnvValue($publicKey));
+
+        $output = $this->option('output');
+
+        if (is_string($output) && $output !== '') {
+            file_put_contents($output, $publicKey);
+            $this->newLine();
+            $this->info("Public key written to {$output}");
+        } else {
+            $this->newLine();
+            $this->comment('Tip: copy public.pem to deploy/client/license/public.pem on the client machine.');
+        }
 
         return self::SUCCESS;
     }

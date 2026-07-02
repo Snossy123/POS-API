@@ -50,18 +50,22 @@ class LicenseService
             throw new RuntimeException('Invalid license key encoding.');
         }
 
-        $publicKey = config('license.public_key');
+        $publicKey = $this->getPublicKey();
 
-        if (! is_string($publicKey) || trim($publicKey) === '') {
+        if ($publicKey === null) {
             throw new RuntimeException('License public key is not configured.');
         }
 
-        $verified = openssl_verify(
+        $verified = @openssl_verify(
             $payloadJson,
             $signature,
             $publicKey,
             OPENSSL_ALGO_SHA256
         );
+
+        if ($verified === -1) {
+            throw new RuntimeException('License public key is invalid.');
+        }
 
         if ($verified !== 1) {
             throw new RuntimeException('License signature is invalid.');
@@ -159,6 +163,27 @@ class LicenseService
         } catch (RuntimeException $exception) {
             return $exception->getMessage();
         }
+    }
+
+    private function getPublicKey(): ?string
+    {
+        $path = config('license.public_key_path');
+
+        if (is_string($path) && is_readable($path)) {
+            $key = file_get_contents($path);
+
+            if (is_string($key) && trim($key) !== '') {
+                return $key;
+            }
+        }
+
+        $fromEnv = env('LICENSE_PUBLIC_KEY');
+
+        if (is_string($fromEnv) && trim($fromEnv) !== '') {
+            return str_replace('\\n', "\n", $fromEnv);
+        }
+
+        return null;
     }
 
     private function base64UrlEncode(string $value): string

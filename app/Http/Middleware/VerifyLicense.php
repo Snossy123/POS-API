@@ -15,6 +15,10 @@ class VerifyLicense
 
     public function handle(Request $request, Closure $next): Response
     {
+        if ($request->isMethod('OPTIONS')) {
+            return $next($request);
+        }
+
         if ($this->licenseService->isValid()) {
             return $next($request);
         }

@@ -22,6 +22,9 @@ RUN composer install --no-dev --optimize-autoloader --no-interaction --no-script
 COPY . .
 RUN composer dump-autoload --optimize
 
+RUN mkdir -p storage/app/license \
+    && cp docker/license/public.pem storage/app/license/public.pem
+
 RUN chown -R www-data:www-data storage bootstrap/cache \
     && chmod -R 775 storage bootstrap/cache
 

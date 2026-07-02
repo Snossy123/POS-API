@@ -26,7 +26,16 @@ class AdminAuthController extends Controller
             ]);
         }
 
-        $token = $user->createToken('admin-api')->plainTextToken;
+        try {
+            $token = $user->createToken('admin-api')->plainTextToken;
+        } catch (\Throwable $exception) {
+            report($exception);
+
+            return response()->json([
+                'message' => 'تعذر إنشاء جلسة الدخول. تحقق من APP_KEY وجداول قاعدة البيانات.',
+                'error' => 'token_creation_failed',
+            ], 500);
+        }
 
         return response()->json([
             'status' => 'success',

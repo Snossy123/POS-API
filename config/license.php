@@ -32,6 +32,6 @@ return [
     | machine only.
     |
     */
-    'public_key' => env('LICENSE_PUBLIC_KEY'),
+    'public_key_path' => storage_path('app/license/public.pem'),
 
 ];
