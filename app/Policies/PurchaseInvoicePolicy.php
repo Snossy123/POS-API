@@ -5,15 +5,15 @@ namespace App\Policies;
 use App\Support\AuthUser;
 use Illuminate\Contracts\Auth\Authenticatable;
 
-class EmployeePolicy
+class PurchaseInvoicePolicy
 {
     public function viewAny(Authenticatable $user): bool
     {
-        return true;
+        return AuthUser::isManagerOrAbove($user);
     }
 
-    public function manage(Authenticatable $user): bool
+    public function create(Authenticatable $user): bool
     {
-        return AuthUser::isAdmin($user);
+        return AuthUser::isManagerOrAbove($user);
     }
 }

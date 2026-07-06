@@ -4,12 +4,23 @@ namespace App\Http\Controllers;
 
 use App\Models\Employee;
 use Illuminate\Http\Request;
+use App\Support\AuthUser;
 
 class EmployeeController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
+        $this->authorize('viewAny', Employee::class);
+
         $employees = Employee::orderBy('id', 'desc')->get();
+
+        if (!AuthUser::isAdmin($request->user())) {
+            $employees = $employees->map(fn (Employee $employee) => [
+                'id' => $employee->id,
+                'name' => $employee->name,
+                'active' => (bool) $employee->active,
+            ]);
+        }
 
         return response()->json([
             'status' => 'success',

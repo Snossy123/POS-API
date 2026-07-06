@@ -18,6 +18,8 @@ class CategoryController extends Controller
 
     public function store(Request $request)
     {
+        $this->authorize('manage', Category::class);
+
         $data = $request->input('category');
         if (!$data) $data = $request->all();
 
@@ -36,6 +38,8 @@ class CategoryController extends Controller
 
     public function update(Request $request, $id)
     {
+        $this->authorize('manage', Category::class);
+
         $data = $request->input('category');
         if (!$data) $data = $request->all();
 
@@ -59,6 +63,8 @@ class CategoryController extends Controller
 
     public function destroy(Request $request, $id)
     {
+        $this->authorize('manage', Category::class);
+
         $deleteId = $id;
         if ($request->has('id')) $deleteId = $request->input('id');
 

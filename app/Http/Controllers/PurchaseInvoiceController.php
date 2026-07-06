@@ -17,6 +17,8 @@ class PurchaseInvoiceController extends Controller
     }
     public function nextNumber()
     {
+        $this->authorize('create', PurchaseInvoice::class);
+
         return response()->json([
             'status' => 'success',
             'invoice_number' => $this->generateInvoiceNumber(),
@@ -25,6 +27,8 @@ class PurchaseInvoiceController extends Controller
 
     public function index(Request $request)
     {
+        $this->authorize('viewAny', PurchaseInvoice::class);
+
         $query = PurchaseInvoice::with('items.category_info')->orderBy('id', 'desc');
 
         $type = $request->query('invoice_type');
@@ -45,6 +49,8 @@ class PurchaseInvoiceController extends Controller
 
     public function store(Request $request)
     {
+        $this->authorize('create', PurchaseInvoice::class);
+
         $data = $request->validate([
             'invoice_number' => ['nullable', 'string', 'max:255'],
             'supplier' => ['required', 'string', 'max:255'],

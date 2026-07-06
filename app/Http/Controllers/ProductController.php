@@ -29,6 +29,8 @@ class ProductController extends Controller
 
     public function store(Request $request)
     {
+        $this->authorize('manage', Product::class);
+
         // Legacy frontend sends { action: "add", product: {...} } or just JSON?
         // products.php expects $input['product'] inside.
         // We should adapt to the expected input or standard input.
@@ -79,6 +81,8 @@ class ProductController extends Controller
 
     public function update(Request $request, $id)
     {
+        $this->authorize('manage', Product::class);
+
         // $id is from route, but legacy might send it in body.
         // If we use standard resource route: PUT /api/products/{id}
         // But legacy uses POST /api/products with action='update' and product data.
@@ -123,6 +127,8 @@ class ProductController extends Controller
 
     public function destroy(Request $request, $id)
     {
+        $this->authorize('manage', Product::class);
+
         // Legacy used POST with action='delete' and id in body.
         // Laravel Resource would use DELETE /api/products/{id}.
         // We can support both if we route correctly.
@@ -143,6 +149,8 @@ class ProductController extends Controller
 
     public function adjustStock(Request $request, Product $product)
     {
+        $this->authorize('manage', Product::class);
+
         $data = $request->validate([
             'delta' => ['nullable', 'numeric'],
             'stock' => ['nullable', 'numeric'],

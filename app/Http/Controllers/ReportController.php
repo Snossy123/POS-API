@@ -7,8 +7,13 @@ use Illuminate\Support\Facades\DB;
 
 class ReportController extends Controller
 {
+    /** Only count completed (non-void, non-refunded) sales invoices in reports. */
+    private const ACTIVE_SALE = "status = 'completed'";
+
     public function index(Request $request)
     {
+        $this->authorize('viewReports');
+
         $type = $request->query('type', 'sales');
         $dateFrom = $request->query('from', date('Y-m-01'));
         $dateTo = $request->query('to', date('Y-m-t'));
@@ -21,6 +26,7 @@ class ReportController extends Controller
                     SELECT date, COUNT(*) AS invoices, SUM(total) AS total
                     FROM sales_invoices
                     WHERE date BETWEEN ? AND ?
+                      AND " . self::ACTIVE_SALE . "
                     GROUP BY date
                     ORDER BY date
                 ", [$dateFrom, $dateTo]);
@@ -49,7 +55,7 @@ class ReportController extends Controller
                         IFNULL(p.total, 0) AS purchases,
                         (IFNULL(s.total, 0) - IFNULL(p.total, 0)) AS profit
                     FROM 
-                    (SELECT date, SUM(total) AS total FROM sales_invoices WHERE date BETWEEN ? AND ? GROUP BY date) s
+                    (SELECT date, SUM(total) AS total FROM sales_invoices WHERE date BETWEEN ? AND ? AND " . self::ACTIVE_SALE . " GROUP BY date) s
                     LEFT JOIN 
                     (SELECT date, SUM(total) AS total FROM purchase_invoices WHERE date BETWEEN ? AND ? GROUP BY date) p
                     ON s.date = p.date
@@ -59,7 +65,7 @@ class ReportController extends Controller
                         IFNULL(p.total, 0) AS purchases,
                         (IFNULL(s.total, 0) - IFNULL(p.total, 0)) AS profit
                     FROM 
-                    (SELECT date, SUM(total) AS total FROM sales_invoices WHERE date BETWEEN ? AND ? GROUP BY date) s
+                    (SELECT date, SUM(total) AS total FROM sales_invoices WHERE date BETWEEN ? AND ? AND " . self::ACTIVE_SALE . " GROUP BY date) s
                     RIGHT JOIN 
                     (SELECT date, SUM(total) AS total FROM purchase_invoices WHERE date BETWEEN ? AND ? GROUP BY date) p
                     ON s.date = p.date
@@ -69,11 +75,12 @@ class ReportController extends Controller
 
             case 'top-selling':
                 $data = DB::select("
-                    SELECT product_name, SUM(quantity) AS quantity, SUM(price * quantity) AS revenue
-                    FROM sales_invoice_items
-                    JOIN sales_invoices ON sales_invoice_items.invoice_id = sales_invoices.id
-                    WHERE sales_invoices.date BETWEEN ? AND ?
-                    GROUP BY product_name
+                    SELECT sii.product_name, SUM(sii.quantity) AS quantity, SUM(sii.price * sii.quantity) AS revenue
+                    FROM sales_invoice_items sii
+                    JOIN sales_invoices si ON sii.invoice_id = si.id
+                    WHERE si.date BETWEEN ? AND ?
+                      AND si." . self::ACTIVE_SALE . "
+                    GROUP BY sii.product_name
                     ORDER BY quantity DESC
                     LIMIT 5
                 ", [$dateFrom, $dateTo]);
@@ -87,29 +94,25 @@ class ReportController extends Controller
                     WHERE purchase_invoices.date BETWEEN ? AND ?
                       AND purchase_invoices.invoice_type = 'general'
                     GROUP BY product_name
+                    ORDER BY quantity DESC
                 ", [$dateFrom, $dateTo]);
                 break;
 
             case 'sold-items':
-                // The query in reports.php for 'sold-items' was causing error in legacy code? Or just SQL?
-                // Step 243 showed it:
-                // SELECT p.name as product_name, IFNULL(SUM(sii.quantity), 0) as quantity_sold, p.stock as remaining
-                // FROM products p
-                // LEFT JOIN sales_invoice_items sii ON p.name = sii.product_name
-                // LEFT JOIN sales_invoices si ON sii.invoice_id = si.id AND si.date BETWEEN ? AND ?
-                // GROUP BY p.id
-                
                 $data = DB::select("
-                    SELECT p.name AS product_name, 
-                        IFNULL(SUM(sii.quantity), 0) AS quantity_sold, 
+                    SELECT p.name AS product_name,
+                        IFNULL(sold.quantity_sold, 0) AS quantity_sold,
                         p.stock AS remaining
                     FROM products p
-                    LEFT JOIN sales_invoice_items sii 
-                        ON p.name = sii.product_name
-                    LEFT JOIN sales_invoices si 
-                        ON sii.invoice_id = si.id 
-                        AND si.date BETWEEN ? AND ?
-                    GROUP BY p.id
+                    LEFT JOIN (
+                        SELECT sii.product_name, SUM(sii.quantity) AS quantity_sold
+                        FROM sales_invoice_items sii
+                        JOIN sales_invoices si ON sii.invoice_id = si.id
+                        WHERE si.date BETWEEN ? AND ?
+                          AND si." . self::ACTIVE_SALE . "
+                        GROUP BY sii.product_name
+                    ) sold ON p.name = sold.product_name
+                    ORDER BY quantity_sold DESC, p.name ASC
                 ", [$dateFrom, $dateTo]);
                 break;
 
