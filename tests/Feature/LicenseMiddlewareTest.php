@@ -26,7 +26,9 @@ class LicenseMiddlewareTest extends TestCase
             'private_key_type' => OPENSSL_KEYTYPE_RSA,
         ]);
 
-        openssl_pkey_export($resource, $this->privateKey);
+        $privateKey = '';
+        openssl_pkey_export($resource, $privateKey);
+        $this->privateKey = $privateKey;
         $details = openssl_pkey_get_details($resource);
         $this->publicKey = $details['key'];
 
@@ -37,7 +39,9 @@ class LicenseMiddlewareTest extends TestCase
         ]);
 
         putenv('LICENSE_PRIVATE_KEY='.$this->privateKey);
+        putenv('LICENSE_PUBLIC_KEY='.$this->publicKey);
         $_ENV['LICENSE_PRIVATE_KEY'] = $this->privateKey;
+        $_ENV['LICENSE_PUBLIC_KEY'] = $this->publicKey;
     }
 
     protected function tearDown(): void
@@ -77,12 +81,11 @@ class LicenseMiddlewareTest extends TestCase
         putenv('LICENSE_KEY='.$licenseKey);
         $_ENV['LICENSE_KEY'] = $licenseKey;
 
-        $response = $this->postJson('/api/auth/admin/login', [
-            'email' => 'admin@pos.local',
-            'password' => 'password',
-        ]);
+        $this->actingAsAdmin();
 
-        $this->assertNotEquals(403, $response->status());
+        $this->getJson('/api/products')
+            ->assertOk()
+            ->assertJsonPath('status', 'success');
     }
 
     public function test_health_endpoint_does_not_require_license(): void

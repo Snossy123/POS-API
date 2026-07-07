@@ -26,7 +26,9 @@ class LicenseServiceTest extends TestCase
             'private_key_type' => OPENSSL_KEYTYPE_RSA,
         ]);
 
-        openssl_pkey_export($resource, $this->privateKey);
+        $privateKey = '';
+        openssl_pkey_export($resource, $privateKey);
+        $this->privateKey = $privateKey;
         $details = openssl_pkey_get_details($resource);
         $this->publicKey = $details['key'];
 
@@ -37,7 +39,9 @@ class LicenseServiceTest extends TestCase
         ]);
 
         putenv('LICENSE_PRIVATE_KEY='.$this->privateKey);
+        putenv('LICENSE_PUBLIC_KEY='.$this->publicKey);
         $_ENV['LICENSE_PRIVATE_KEY'] = $this->privateKey;
+        $_ENV['LICENSE_PUBLIC_KEY'] = $this->publicKey;
     }
 
     protected function tearDown(): void

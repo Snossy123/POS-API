@@ -50,26 +50,28 @@ class ReportController extends Controller
 
             case 'profits':
                 $data = DB::select("
-                    SELECT s.date,
-                        IFNULL(s.total, 0) AS sales,
-                        IFNULL(p.total, 0) AS purchases,
-                        (IFNULL(s.total, 0) - IFNULL(p.total, 0)) AS profit
-                    FROM 
-                    (SELECT date, SUM(total) AS total FROM sales_invoices WHERE date BETWEEN ? AND ? AND " . self::ACTIVE_SALE . " GROUP BY date) s
-                    LEFT JOIN 
-                    (SELECT date, SUM(total) AS total FROM purchase_invoices WHERE date BETWEEN ? AND ? GROUP BY date) p
-                    ON s.date = p.date
-                    UNION
-                    SELECT p.date,
-                        IFNULL(s.total, 0) AS sales,
-                        IFNULL(p.total, 0) AS purchases,
-                        (IFNULL(s.total, 0) - IFNULL(p.total, 0)) AS profit
-                    FROM 
-                    (SELECT date, SUM(total) AS total FROM sales_invoices WHERE date BETWEEN ? AND ? AND " . self::ACTIVE_SALE . " GROUP BY date) s
-                    RIGHT JOIN 
-                    (SELECT date, SUM(total) AS total FROM purchase_invoices WHERE date BETWEEN ? AND ? GROUP BY date) p
-                    ON s.date = p.date
-                    ORDER BY date
+                    SELECT date, sales, purchases, profit FROM (
+                        SELECT s.date,
+                            IFNULL(s.total, 0) AS sales,
+                            IFNULL(p.total, 0) AS purchases,
+                            (IFNULL(s.total, 0) - IFNULL(p.total, 0)) AS profit
+                        FROM 
+                        (SELECT date, SUM(total) AS total FROM sales_invoices WHERE date BETWEEN ? AND ? AND " . self::ACTIVE_SALE . " GROUP BY date) s
+                        LEFT JOIN 
+                        (SELECT date, SUM(total) AS total FROM purchase_invoices WHERE date BETWEEN ? AND ? GROUP BY date) p
+                        ON s.date = p.date
+                        UNION
+                        SELECT p.date,
+                            IFNULL(s.total, 0) AS sales,
+                            IFNULL(p.total, 0) AS purchases,
+                            (IFNULL(s.total, 0) - IFNULL(p.total, 0)) AS profit
+                        FROM 
+                        (SELECT date, SUM(total) AS total FROM sales_invoices WHERE date BETWEEN ? AND ? AND " . self::ACTIVE_SALE . " GROUP BY date) s
+                        RIGHT JOIN 
+                        (SELECT date, SUM(total) AS total FROM purchase_invoices WHERE date BETWEEN ? AND ? GROUP BY date) p
+                        ON s.date = p.date
+                    ) AS combined
+                    ORDER BY combined.date
                 ", [$dateFrom, $dateTo, $dateFrom, $dateTo, $dateFrom, $dateTo, $dateFrom, $dateTo]);
                 break;
 

@@ -7,7 +7,6 @@ use Tests\TestCase;
 
 class InventoryCycleTest extends TestCase
 {
-    use RefreshDatabase;
     public function test_sale_deducts_stock_even_when_insufficient(): void
     {
         $this->actingAsAdmin();

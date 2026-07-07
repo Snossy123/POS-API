@@ -10,7 +10,6 @@ use Tests\TestCase;
 
 class InventoryServiceTest extends TestCase
 {
-    use RefreshDatabase;
     private InventoryService $service;
 
     protected function setUp(): void

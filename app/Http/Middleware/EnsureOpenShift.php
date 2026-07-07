@@ -2,8 +2,8 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\Employee;
 use App\Models\Shift;
-use App\Support\AuthUser;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -12,7 +12,7 @@ class EnsureOpenShift
 {
     public function handle(Request $request, Closure $next): Response
     {
-        $user = $request->user();
+        $user = $request->user('sanctum') ?? $request->user();
 
         if (!$user instanceof Employee) {
             return $next($request);
