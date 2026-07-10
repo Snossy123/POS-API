@@ -75,7 +75,7 @@ class SalesInvoiceController extends Controller
             $changeGiven = $paymentStatus === 'unpaid' ? 0 : max(0, $amountPaid - $total);
 
             $invoice = SalesInvoice::create([
-                'invoice_number' => $data['invoiceNumber'],
+                'invoice_number' => $this->generateInvoiceNumber(),
                 'date' => $data['date'],
                 'time' => $data['time'],
                 'employee_id' => $data['employee_id'],
@@ -368,6 +368,24 @@ class SalesInvoiceController extends Controller
             'status' => 'success',
             'invoice' => $this->transformInvoice($salesInvoice->load(['employee', 'items'])),
         ]);
+    }
+
+    private function generateInvoiceNumber(): string
+    {
+        $date = now('Africa/Cairo')->format('Ymd');
+        $prefix = "INV-{$date}-";
+
+        $last = SalesInvoice::where('invoice_number', 'like', "{$prefix}%")
+            ->orderByDesc('id')
+            ->lockForUpdate()
+            ->value('invoice_number');
+
+        $sequence = 1;
+        if ($last && str_starts_with($last, $prefix)) {
+            $sequence = ((int) substr($last, strlen($prefix))) + 1;
+        }
+
+        return $prefix.str_pad((string) $sequence, 4, '0', STR_PAD_LEFT);
     }
 
     private function transformInvoice(SalesInvoice $invoice): array
