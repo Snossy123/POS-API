@@ -95,8 +95,14 @@ class ProductController extends Controller
         }
 
         $imagePath = $product->image;
-        if (isset($data['image']) && strpos($data['image'], 'data:image') === 0) {
-            $imagePath = $this->saveImage($data['image']);
+        if (array_key_exists('image', $data)) {
+            $incoming = $data['image'];
+            if ($incoming === null || $incoming === '') {
+                $imagePath = null;
+            } elseif (is_string($incoming) && strpos($incoming, 'data:image') === 0) {
+                $imagePath = $this->saveImage($incoming);
+            }
+            // Otherwise keep existing path (unchanged image on edit)
         }
 
         $product->update([
