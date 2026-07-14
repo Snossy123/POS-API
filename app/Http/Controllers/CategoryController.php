@@ -12,8 +12,29 @@ class CategoryController extends Controller
         return response()->json([
             'status' => 'success',
             'message' => 'Categories fetched successfully',
-            'categories' => Category::all()
+            'categories' => $this->categoriesWithModifiers(),
         ]);
+    }
+
+    private function categoriesWithModifiers()
+    {
+        return Category::with(['modifiers' => function ($q) {
+            $q->where('active', true)->orderBy('name');
+        }])->get()->map(function (Category $category) {
+            $data = $category->toArray();
+            $data['modifiers'] = $category->modifiers->map(fn ($m) => [
+                'id' => $m->id,
+                'name' => $m->name,
+                'price' => (float) $m->price,
+            ])->values()->all();
+            unset($data['modifiers_relation']);
+            return $data;
+        })->values();
+    }
+
+    private function allCategoriesPayload()
+    {
+        return $this->categoriesWithModifiers();
     }
 
     public function store(Request $request)
@@ -32,7 +53,7 @@ class CategoryController extends Controller
         return response()->json([
             'success' => true,
             'message' => "تم إضافة الفئة بنجاح",
-            'categories' => Category::all()
+            'categories' => $this->allCategoriesPayload(),
         ]);
     }
 
@@ -54,10 +75,14 @@ class CategoryController extends Controller
             'color' => $data['color'] ?? $category->color
         ]);
 
+        if (isset($data['modifier_ids']) && is_array($data['modifier_ids'])) {
+            $category->modifiers()->sync(array_map('intval', $data['modifier_ids']));
+        }
+
         return response()->json([
             'success' => true,
             'message' => "تم تحديث الفئة بنجاح",
-            'categories' => Category::all()
+            'categories' => $this->allCategoriesPayload(),
         ]);
     }
 
@@ -73,7 +98,7 @@ class CategoryController extends Controller
         return response()->json([
             'success' => true,
             'message' => "تم حذف الفئة بنجاح",
-            'categories' => Category::all()
+            'categories' => $this->allCategoriesPayload(),
         ]);
     }
 

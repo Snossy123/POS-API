@@ -5,6 +5,7 @@ use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\Auth\EmployeeAuthController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\EmployeeController;
+use App\Http\Controllers\ModifierController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\PurchaseInvoiceController;
 use App\Http\Controllers\ReportController;
@@ -26,6 +27,9 @@ Route::middleware('license')->group(function () {
 
         Route::post('/categories', [CategoryController::class, 'handle']);
         Route::get('/categories', [CategoryController::class, 'index']);
+
+        Route::post('/modifiers', [ModifierController::class, 'handle']);
+        Route::get('/modifiers', [ModifierController::class, 'index']);
 
         Route::post('/employees', [EmployeeController::class, 'handle']);
         Route::get('/employees', [EmployeeController::class, 'index']);

@@ -14,7 +14,13 @@ class SalesInvoiceItem extends Model
 
     protected $table = 'sales_invoice_items';
     protected $guarded = [];
-    public $timestamps = false; 
+    public $timestamps = false;
+
+    protected $casts = [
+        'modifiers' => 'array',
+        'price' => 'float',
+        'quantity' => 'float',
+    ]; 
 
     public function invoice()
     {

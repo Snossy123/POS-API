@@ -14,16 +14,10 @@ class ProductController extends Controller
     }
     public function index()
     {
-        $products = Product::with('category_info')->get()->map(function ($product) {
-            $data = $product->toArray();
-            $data['category'] = $product->category_info ? $product->category_info->name : $product->category;
-            return $data;
-        });
-
         return response()->json([
             'status' => 'success',
             'message' => 'Products fetched successfully',
-            'products' => $products
+            'products' => $this->getProductsList(),
         ]);
     }
 
@@ -220,9 +214,18 @@ class ProductController extends Controller
 
     private function getProductsList()
     {
-        return Product::with('category_info')->get()->map(function ($product) {
+        return Product::with(['category_info.modifiers' => function ($q) {
+            $q->where('active', true)->orderBy('name');
+        }])->get()->map(function ($product) {
             $data = $product->toArray();
             $data['category'] = $product->category_info ? $product->category_info->name : $product->category;
+            $data['modifiers'] = $product->category_info
+                ? $product->category_info->modifiers->map(fn ($m) => [
+                    'id' => $m->id,
+                    'name' => $m->name,
+                    'price' => (float) $m->price,
+                ])->values()->all()
+                : [];
             return $data;
         });
     }

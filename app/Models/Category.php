@@ -17,4 +17,9 @@ class Category extends Model
     {
         return $this->hasMany(Product::class);
     }
+
+    public function modifiers()
+    {
+        return $this->belongsToMany(Modifier::class, 'category_modifier');
+    }
 }

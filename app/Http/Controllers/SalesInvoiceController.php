@@ -94,14 +94,7 @@ class SalesInvoiceController extends Controller
             $mergedItems = $this->mergeRequestItems($data['items']);
 
             foreach ($mergedItems as $item) {
-                SalesInvoiceItem::create([
-                    'invoice_id' => $invoice->id,
-                    'product_id' => $item['product_id'] ?? $item['id'] ?? null,
-                    'product_name' => $item['name'],
-                    'price' => $item['price'],
-                    'quantity' => $item['quantity'],
-                    'barcode' => $item['barcode'] ?? '',
-                ]);
+                SalesInvoiceItem::create($this->itemCreatePayload($invoice->id, $item));
             }
 
             $this->inventoryService->deductForSale($mergedItems);
@@ -280,6 +273,11 @@ class SalesInvoiceController extends Controller
             'items.*.price' => ['required', 'numeric', 'min:0'],
             'items.*.quantity' => ['required', 'numeric', 'min:0.01'],
             'items.*.barcode' => ['nullable', 'string'],
+            'items.*.size' => ['nullable', 'string', 'max:8'],
+            'items.*.modifiers' => ['nullable', 'array'],
+            'items.*.modifiers.*.id' => ['nullable'],
+            'items.*.modifiers.*.name' => ['nullable', 'string'],
+            'items.*.modifiers.*.price' => ['nullable', 'numeric'],
             'kitchen_note' => ['nullable', 'string', 'max:500'],
             'total' => ['required', 'numeric', 'min:0'],
         ]);
@@ -294,14 +292,7 @@ class SalesInvoiceController extends Controller
             $salesInvoice->items()->delete();
 
             foreach ($mergedItems as $item) {
-                SalesInvoiceItem::create([
-                    'invoice_id' => $salesInvoice->id,
-                    'product_id' => $item['product_id'] ?? $item['id'] ?? null,
-                    'product_name' => $item['name'],
-                    'price' => $item['price'],
-                    'quantity' => $item['quantity'],
-                    'barcode' => $item['barcode'] ?? '',
-                ]);
+                SalesInvoiceItem::create($this->itemCreatePayload($salesInvoice->id, $item));
             }
 
             $updateData = ['total' => $total];
@@ -403,6 +394,66 @@ class SalesInvoiceController extends Controller
         return $data;
     }
 
+    private function itemCreatePayload(int $invoiceId, array $item): array
+    {
+        return [
+            'invoice_id' => $invoiceId,
+            'product_id' => $item['product_id'] ?? $item['id'] ?? null,
+            'product_name' => $item['name'],
+            'price' => $item['price'],
+            'quantity' => $item['quantity'],
+            'barcode' => $item['barcode'] ?? '',
+            'size' => $item['size'] ?? null,
+            'modifiers' => $this->normalizeModifiers($item['modifiers'] ?? []),
+        ];
+    }
+
+    private function normalizeModifiers(mixed $modifiers): array
+    {
+        if (!is_array($modifiers)) {
+            return [];
+        }
+
+        $normalized = [];
+        foreach ($modifiers as $modifier) {
+            if (!is_array($modifier) || empty($modifier['name'])) {
+                continue;
+            }
+            $normalized[] = [
+                'id' => isset($modifier['id']) ? (int) $modifier['id'] : null,
+                'name' => (string) $modifier['name'],
+                'price' => round((float) ($modifier['price'] ?? 0), 2),
+            ];
+        }
+
+        usort($normalized, fn ($a, $b) => ($a['id'] ?? 0) <=> ($b['id'] ?? 0) ?: strcmp($a['name'], $b['name']));
+
+        return $normalized;
+    }
+
+    private function modifiersFingerprint(mixed $modifiers): string
+    {
+        $normalized = $this->normalizeModifiers($modifiers);
+        if ($normalized === []) {
+            return '';
+        }
+
+        return implode(',', array_map(
+            fn ($m) => ($m['id'] ?? $m['name']) . ':' . number_format($m['price'], 2, '.', ''),
+            $normalized
+        ));
+    }
+
+    private function itemMergeKey(array $item): string
+    {
+        $productId = $item['product_id'] ?? $item['id'] ?? ($item['name'] ?? '');
+        $price = round((float) $item['price'], 2);
+        $size = $item['size'] ?? '';
+        $mods = $this->modifiersFingerprint($item['modifiers'] ?? []);
+
+        return $productId . '|' . number_format($price, 2, '.', '') . '|' . $size . '|' . $mods;
+    }
+
     private function mergeRequestItems(array $items): array
     {
         $merged = [];
@@ -410,7 +461,10 @@ class SalesInvoiceController extends Controller
         foreach ($items as $item) {
             $productId = $item['product_id'] ?? $item['id'] ?? null;
             $price = round((float) $item['price'], 2);
-            $key = ($productId ?? ($item['name'] ?? '')) . '|' . number_format($price, 2, '.', '');
+            $item['price'] = $price;
+            $item['modifiers'] = $this->normalizeModifiers($item['modifiers'] ?? []);
+            $item['size'] = $item['size'] ?? null;
+            $key = $this->itemMergeKey($item);
 
             if (isset($merged[$key])) {
                 $merged[$key]['quantity'] += (float) $item['quantity'];
@@ -418,7 +472,6 @@ class SalesInvoiceController extends Controller
             }
 
             $merged[$key] = $item;
-            $merged[$key]['price'] = $price;
             $merged[$key]['quantity'] = (float) $item['quantity'];
             if ($productId) {
                 $merged[$key]['product_id'] = $productId;
@@ -435,21 +488,24 @@ class SalesInvoiceController extends Controller
         foreach ($items as $item) {
             $productId = $item->product_id;
             $price = round((float) $item->price, 2);
-            $key = ($productId ?? $item->product_name) . '|' . number_format($price, 2, '.', '');
-
-            if (isset($merged[$key])) {
-                $merged[$key]['quantity'] += (float) $item->quantity;
-                continue;
-            }
-
-            $merged[$key] = [
+            $payload = [
                 'id' => $productId ?? $item->id,
                 'product_id' => $productId,
                 'name' => $item->product_name,
                 'price' => $price,
                 'quantity' => (float) $item->quantity,
                 'barcode' => $item->barcode,
+                'size' => $item->size,
+                'modifiers' => $this->normalizeModifiers($item->modifiers ?? []),
             ];
+            $key = $this->itemMergeKey($payload);
+
+            if (isset($merged[$key])) {
+                $merged[$key]['quantity'] += (float) $item->quantity;
+                continue;
+            }
+
+            $merged[$key] = $payload;
         }
 
         return array_values($merged);

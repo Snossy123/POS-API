@@ -4,12 +4,14 @@ namespace App\Providers;
 
 use App\Models\Category;
 use App\Models\Employee;
+use App\Models\Modifier;
 use App\Models\Product;
 use App\Models\PurchaseInvoice;
 use App\Models\SalesInvoice;
 use App\Models\Shift;
 use App\Policies\CategoryPolicy;
 use App\Policies\EmployeePolicy;
+use App\Policies\ModifierPolicy;
 use App\Policies\ProductPolicy;
 use App\Policies\PurchaseInvoicePolicy;
 use App\Policies\SalesInvoicePolicy;
@@ -26,6 +28,7 @@ class AppServiceProvider extends ServiceProvider
         Employee::class => EmployeePolicy::class,
         Product::class => ProductPolicy::class,
         Category::class => CategoryPolicy::class,
+        Modifier::class => ModifierPolicy::class,
         PurchaseInvoice::class => PurchaseInvoicePolicy::class,
     ];
 
