@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Customer;
 use App\Models\Employee;
 use App\Models\SalesInvoice;
 use App\Models\SalesInvoiceAction;
@@ -11,6 +12,7 @@ use App\Services\InventoryService;
 use App\Support\AuthUser;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class SalesInvoiceController extends Controller
 {
@@ -65,9 +67,38 @@ class SalesInvoiceController extends Controller
             $paymentStatus = in_array($data['payment_status'] ?? 'paid', ['paid', 'unpaid', 'partial'], true)
                 ? $data['payment_status']
                 : 'paid';
-            $orderType = in_array($data['order_type'] ?? 'takeaway', ['takeaway', 'table'], true)
+            $orderType = in_array($data['order_type'] ?? 'takeaway', ['takeaway', 'table', 'delivery'], true)
                 ? $data['order_type']
                 : 'takeaway';
+
+            $customerId = null;
+            $customerName = null;
+            $customerPhone = null;
+            $customerAddress = null;
+
+            if ($orderType === 'delivery') {
+                $customerName = trim((string) ($data['customer_name'] ?? ''));
+                $customerPhone = preg_replace('/\s+/', '', trim((string) ($data['customer_phone'] ?? ''))) ?: '';
+                $customerAddress = isset($data['customer_address'])
+                    ? trim((string) $data['customer_address'])
+                    : null;
+
+                if ($customerName === '' || $customerPhone === '') {
+                    throw ValidationException::withMessages([
+                        'customer_name' => ['اسم العميل ورقم التليفون مطلوبان لطلبات الدليفري'],
+                        'customer_phone' => ['اسم العميل ورقم التليفون مطلوبان لطلبات الدليفري'],
+                    ]);
+                }
+
+                $customer = Customer::updateOrCreate(
+                    ['phone' => $customerPhone],
+                    [
+                        'name' => $customerName,
+                        'address_notes' => $customerAddress !== '' ? $customerAddress : null,
+                    ]
+                );
+                $customerId = $customer->id;
+            }
 
             $amountPaid = $paymentStatus === 'unpaid'
                 ? 0
@@ -79,6 +110,7 @@ class SalesInvoiceController extends Controller
                 'date' => $data['date'],
                 'time' => $data['time'],
                 'employee_id' => $data['employee_id'],
+                'customer_id' => $customerId,
                 'shift_id' => $shift?->id,
                 'total' => $total,
                 'payment_method' => $paymentMethod,
@@ -86,6 +118,9 @@ class SalesInvoiceController extends Controller
                 'change_given' => $changeGiven,
                 'kitchen_note' => $data['kitchen_note'] ?? '',
                 'order_type' => $orderType,
+                'customer_name' => $customerName,
+                'customer_phone' => $customerPhone,
+                'customer_address' => $customerAddress !== '' ? $customerAddress : null,
                 'status' => 'completed',
                 'payment_status' => $paymentStatus,
                 'client_id' => $clientId,
@@ -106,6 +141,9 @@ class SalesInvoiceController extends Controller
                 'message' => 'Invoice saved successfully',
                 'invoice' => $this->transformInvoice($invoice->load(['employee', 'items'])),
             ]);
+        } catch (ValidationException $e) {
+            DB::rollBack();
+            throw $e;
         } catch (\Exception $e) {
             DB::rollBack();
 

@@ -4,6 +4,7 @@ use App\Http\Controllers\Auth\AdminAuthController;
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\Auth\EmployeeAuthController;
 use App\Http\Controllers\CategoryController;
+use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\ModifierController;
 use App\Http\Controllers\ProductController;
@@ -33,6 +34,11 @@ Route::middleware('license')->group(function () {
 
         Route::post('/employees', [EmployeeController::class, 'handle']);
         Route::get('/employees', [EmployeeController::class, 'index']);
+
+        Route::get('/customers', [CustomerController::class, 'index']);
+        Route::post('/customers', [CustomerController::class, 'store']);
+        Route::patch('/customers/{customer}', [CustomerController::class, 'update']);
+        Route::delete('/customers/{customer}', [CustomerController::class, 'destroy']);
 
         Route::get('/purchase-invoices/next-number', [PurchaseInvoiceController::class, 'nextNumber']);
         Route::post('/purchase-invoices', [PurchaseInvoiceController::class, 'store']);

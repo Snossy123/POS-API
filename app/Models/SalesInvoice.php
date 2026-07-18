@@ -33,6 +33,11 @@ class SalesInvoice extends Model
         return $this->belongsTo(Employee::class);
     }
 
+    public function customer()
+    {
+        return $this->belongsTo(Customer::class);
+    }
+
     public function shift()
     {
         return $this->belongsTo(Shift::class);
